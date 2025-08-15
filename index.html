@@ -7,9 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/babel-standalone@7.22.10/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Fallback CSS if Tailwind CDN fails */
         body {
             font-family: Arial, sans-serif;
             background-color: #f0f0f0;
@@ -30,8 +28,8 @@
             margin-bottom: 16px;
             font-size: 14px;
         }
-        button {
-            background-color: #3b82f6;
+        .group-button {
+            background-color: #007bff;
             color: white;
             padding: 8px;
             border: none;
@@ -42,12 +40,23 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 8px;
+        }
+        .group-content {
+            background-color: white;
+            padding: 16px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         .match-input {
             display: flex;
             align-items: center;
             gap: 8px;
             margin-bottom: 8px;
+        }
+        .match-input span {
+            flex: 1;
+            font-size: 14px;
         }
         .match-input input {
             width: 40px;
@@ -68,13 +77,14 @@
             font-size: 14px;
         }
         th {
-            background-color: #3b82f6;
+            background-color: #007bff;
             color: white;
         }
         .error-message {
             color: red;
             text-align: center;
             margin: 16px 0;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -85,7 +95,7 @@
         try {
             const { useState } = React;
 
-            // Match data from CSV (84 matches)
+            // Match data (84 matches)
             const matches = [
                 { group: "U7 Boys Group A", team1: "Knights U7 Boys - FRANJIC", team2: "Dinamo U7 Boys - PERIC", time: "9:00 AM", pitch: "4A" },
                 { group: "U7 Boys Group A", team1: "Nth Geelong U7 Boys - IVAN", team2: "Strathmore U7 Boys - NICK", time: "9:00 AM", pitch: "4B" },
@@ -185,12 +195,11 @@
             // MatchInput Component
             function MatchInput({ match, index, updateScores }) {
                 return (
-                    <div className="flex items-center space-x-2 mb-2 match-input">
-                        <span className="w-1/3 text-sm">{match.team1} vs {match.team2}</span>
+                    <div className="match-input">
+                        <span>{match.team1} vs {match.team2}</span>
                         <input
                             type="number"
                             min="0"
-                            className="w-12 p-1 border rounded text-sm"
                             placeholder="0"
                             onChange={(e) => updateScores(index, 'team1Goals', parseInt(e.target.value) || 0)}
                         />
@@ -198,7 +207,6 @@
                         <input
                             type="number"
                             min="0"
-                            className="w-12 p-1 border rounded text-sm"
                             placeholder="0"
                             onChange={(e) => updateScores(index, 'team2Goals', parseInt(e.target.value) || 0)}
                         />
@@ -241,26 +249,26 @@
                 }).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference);
 
                 return (
-                    <div className="mt-4">
-                        <h3 className="text-lg font-bold">{group}</h3>
-                        <table className="w-full border-collapse text-sm">
+                    <div>
+                        <h3>{group}</h3>
+                        <table>
                             <thead>
-                                <tr className="bg-blue-600 text-white">
-                                    <th className="p-2">Team</th>
-                                    <th className="p-2">Pts</th>
-                                    <th className="p-2">GD</th>
-                                    <th className="p-2">GS</th>
-                                    <th className="p-2">GC</th>
+                                <tr>
+                                    <th>Team</th>
+                                    <th>Pts</th>
+                                    <th>GD</th>
+                                    <th>GS</th>
+                                    <th>GC</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {standings.map((row, idx) => (
-                                    <tr key={idx} className="border-b">
-                                        <td className="p-2">{row.team}</td>
-                                        <td className="p-2">{row.points}</td>
-                                        <td className="p-2">{row.goalDifference}</td>
-                                        <td className="p-2">{row.goalsScored}</td>
-                                        <td className="p-2">{row.goalsConceded}</td>
+                                    <tr key={idx}>
+                                        <td>{row.team}</td>
+                                        <td>{row.points}</td>
+                                        <td>{row.goalDifference}</td>
+                                        <td>{row.goalsScored}</td>
+                                        <td>{row.goalsConceded}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -285,20 +293,17 @@
                 };
 
                 return (
-                    <div className="container mx-auto p-4 max-w-3xl">
-                        <h1 className="text-xl font-bold mb-4 text-center">Youth Soccer Tournament Score Calculator</h1>
-                        <p className="text-center mb-4 text-sm">Enter match scores to calculate points and goal difference for September 14, 2025.</p>
+                    <div className="container">
+                        <h1>Youth Soccer Tournament Score Calculator</h1>
+                        <p>Enter match scores to calculate points and goal difference for September 14, 2025.</p>
                         {groups.map(group => (
-                            <div key={group} className="mb-4">
-                                <button
-                                    className="w-full bg-blue-500 text-white p-2 rounded flex justify-between items-center text-sm"
-                                    onClick={() => toggleGroup(group)}
-                                >
+                            <div key={group}>
+                                <button className="group-button" onClick={() => toggleGroup(group)}>
                                     <span>{group}</span>
                                     <span>{expandedGroups[group] ? '−' : '+'}</span>
                                 </button>
                                 {expandedGroups[group] && (
-                                    <div className="mt-2 p-4 bg-white rounded shadow">
+                                    <div className="group-content">
                                         {matches.map((match, index) => (
                                             match.group === group && (
                                                 <MatchInput
