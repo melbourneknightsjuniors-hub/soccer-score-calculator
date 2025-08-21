@@ -1,0 +1,377 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soccer Tournament Score Calculator</title>
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/babel-standalone@7.22.10/babel.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        p {
+            text-align: center;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        .group-button {
+            background-color: #007bff;
+            color: white;
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .group-content {
+            background-color: white;
+            padding: 16px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .match-input {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .match-input span {
+            flex: 1;
+            font-size: 14px;
+        }
+        .match-input input {
+            width: 40px;
+            padding: 4px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+        th, td {
+            padding: 8px;
+            border-bottom: 1px solid #ccc;
+            text-align: left;
+            font-size: 14px;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        .error-message {
+            color: red;
+            text-align: center;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <div id="error" class="error-message"></div>
+    <script type="text/babel">
+        try {
+            const { useState } = React;
+
+            // Match data (84 matches)
+            const matches = [
+                { group: "U7 Boys Group A", team1: "Knights U7 Boys - FRANJIC", team2: "Dinamo U7 Boys - PERIC", time: "9:00 AM", pitch: "4A" },
+                { group: "U7 Boys Group A", team1: "Nth Geelong U7 Boys - IVAN", team2: "Strathmore U7 Boys - NICK", time: "9:00 AM", pitch: "4B" },
+                { group: "U7 Boys Group A", team1: "Knights U7 Boys - FRANJIC", team2: "Nth Geelong U7 Boys - IVAN", time: "10:20 AM", pitch: "4A" },
+                { group: "U7 Boys Group A", team1: "Dinamo U7 Boys - PERIC", team2: "Strathmore U7 Boys - NICK", time: "10:20 AM", pitch: "4B" },
+                { group: "U7 Boys Group A", team1: "Dinamo U7 Boys - PERIC", team2: "Nth Geelong U7 Boys - IVAN", time: "11:00 AM", pitch: "4B" },
+                { group: "U7 Boys Group A", team1: "Knights U7 Boys - FRANJIC", team2: "Strathmore U7 Boys - NICK", time: "11:40 AM", pitch: "4A" },
+                { group: "U7 Boys Group B", team1: "Knights U7 Boys - RILEY", team2: "Dinamo U7 Boys - STEVE", time: "9:40 AM", pitch: "4A" },
+                { group: "U7 Boys Group B", team1: "Nth Geelong U7 Boys - CARYL", team2: "Dandy City U7 Boys - TOM", time: "9:40 AM", pitch: "4B" },
+                { group: "U7 Boys Group B", team1: "Knights U7 Boys - RILEY", team2: "Nth Geelong U7 Boys - CARYL", time: "11:00 AM", pitch: "4A" },
+                { group: "U7 Boys Group B", team1: "Dinamo U7 Boys - STEVE", team2: "Dandy City U7 Boys - TOM", time: "11:40 AM", pitch: "4B" },
+                { group: "U7 Boys Group B", team1: "Knights U7 Boys - RILEY", team2: "Dandy City U7 Boys - TOM", time: "12:50 PM", pitch: "4A" },
+                { group: "U7 Boys Group B", team1: "Nth Geelong U7 Boys - CARYL", team2: "Dinamo U7 Boys - STEVE", time: "12:50 PM", pitch: "4B" },
+                { group: "U8 Boys Group A", team1: "Knights U8 Boys - LUKA", team2: "Dinamo U8 Boys - STEVEN", time: "9:00 AM", pitch: "1A" },
+                { group: "U8 Boys Group A", team1: "Dandy City U8 Boys - GORAN", team2: "Strathmore U8 Boys - MATT", time: "9:00 AM", pitch: "1B" },
+                { group: "U8 Boys Group A", team1: "Knights U8 Boys - LUKA", team2: "Dandy City U8 Boys - GORAN", time: "10:20 AM", pitch: "1A" },
+                { group: "U8 Boys Group A", team1: "Dinamo U8 Boys - STEVEN", team2: "Strathmore U8 Boys - MATT", time: "11:00 AM", pitch: "1A" },
+                { group: "U8 Boys Group A", team1: "Knights U8 Boys - LUKA", team2: "Strathmore U8 Boys - MATT", time: "11:40 AM", pitch: "1A" },
+                { group: "U8 Boys Group A", team1: "Dinamo U8 Boys - STEVEN", team2: "Dandy City U8 Boys - GORAN", time: "12:50 PM", pitch: "1B" },
+                { group: "U8 Boys Group B", team1: "Dinamo U8 Boys - IVE", team2: "North Geelong U8 Boys - MARINKO", time: "9:40 AM", pitch: "1A" },
+                { group: "U8 Boys Group B", team1: "Dinamo U8 Boys - IVE", team2: "Dandy City U8 Boys - ADRIAN", time: "11:00 AM", pitch: "1B" },
+                { group: "U8 Boys Group B", team1: "North Geelong U8 Boys - MARINKO", team2: "Dandy City U8 Boys - ADRIAN", time: "11:40 AM", pitch: "1B" },
+                { group: "U9 Boys Group A", team1: "Knights U9 Boys - EVAN", team2: "Strathmore U9 Boys - JURIC", time: "9:00 AM", pitch: "1C" },
+                { group: "U9 Boys Group A", team1: "Dandy City U9 Boys - JUSTIN", team2: "Dandy City U9 Boys - RJL", time: "9:40 AM", pitch: "1B" },
+                { group: "U9 Boys Group A", team1: "Knights U9 Boys - EVAN", team2: "Dandy City U9 Boys - JUSTIN", time: "10:20 AM", pitch: "1B" },
+                { group: "U9 Boys Group A", team1: "Strathmore U9 Boys - JURIC", team2: "Dandy City U9 Boys - RJL", time: "11:00 AM", pitch: "1D" },
+                { group: "U9 Boys Group A", team1: "Strathmore U9 Boys - JURIC", team2: "Dandy City U9 Boys - JUSTIN", time: "11:40 AM", pitch: "1D" },
+                { group: "U9 Boys Group A", team1: "Knights U9 Boys - EVAN", team2: "Dandy City U9 Boys - RJL", time: "1:30 PM", pitch: "1C" },
+                { group: "U9 Boys Group B", team1: "Dinamo U9 Boys - RAZOV", team2: "Dandy City U9 Boys - FABIAN", time: "9:00 AM", pitch: "1D" },
+                { group: "U9 Boys Group B", team1: "Knights U9 Boys - BUCIC", team2: "Dandy City U9 Boys - FABIAN", time: "10:20 AM", pitch: "1C" },
+                { group: "U9 Boys Group B", team1: "Knights U9 Boys - BUCIC", team2: "Dinamo U9 Boys - RAZOV", time: "11:40 AM", pitch: "1C" },
+                { group: "U9 Boys Group B", team1: "Knights U9 Boys - BUCIC", team2: "North Geelong U9 Boys - DANE", time: "1:30 PM", pitch: "1B" },
+                { group: "U9 Boys Group B", team1: "Dinamo U9 Boys - RAZOV", team2: "North Geelong U9 Boys - DANE", time: "2:10 PM", pitch: "4" },
+                { group: "U9 Boys Group B", team1: "Dandy City U9 Boys - FABIAN", team2: "North Geelong U9 Boys - DANE", time: "2:50 PM", pitch: "4" },
+                { group: "U9 Boys Group C", team1: "Dinamo U9 Boys - DAVID", team2: "Dandy City U9 Boys - EMRAY", time: "9:40 AM", pitch: "1C" },
+                { group: "U9 Boys Group C", team1: "Dinamo U9 Boys - DAVID", team2: "Strathmore U9 Boys - MESH", time: "11:00 AM", pitch: "1C" },
+                { group: "U9 Boys Group C", team1: "Dandy City U9 Boys - EMRAY", team2: "Strathmore U9 Boys - MESH", time: "1:30 PM", pitch: "4" },
+                { group: "U10 Boys Group A", team1: "Strathmore U10 Boys - RODRIGO", team2: "Dandy City U10 Boys - ERGUN", time: "10:20 AM", pitch: "3A" },
+                { group: "U10 Boys Group A", team1: "Knights U10 Boys - KOLIC", team2: "Strathmore U10 Boys - RODRIGO", time: "11:00 AM", pitch: "3B" },
+                { group: "U10 Boys Group A", team1: "Knights U10 Boys - KOLIC", team2: "Dandy City U10 Boys - ERGUN", time: "1:30 PM", pitch: "2A" },
+                { group: "U10 Boys Group B", team1: "Dinamo U10 Boys - HIRO", team2: "Dandy City U10 Boys - MURAT", time: "9:40 AM", pitch: "2A" },
+                { group: "U10 Boys Group B", team1: "Dinamo U10 Boys - HIRO", team2: "Strathmore U10 Boys - SOUFI", time: "11:40 AM", pitch: "2A" },
+                { group: "U10 Boys Group B", team1: "Strathmore U10 Boys - SOUFI", team2: "Dandy City U10 Boys - MURAT", time: "12:50 PM", pitch: "1D" },
+                { group: "U11 Boys Group A", team1: "Knights U11 Boys - JAMES", team2: "Dinamo U11 Boys - KUNA", time: "9:00 AM", pitch: "2B" },
+                { group: "U11 Boys Group A", team1: "Dinamo U11 Boys - KUNA", team2: "Dandy City U11 Boys - ROB", time: "10:20 AM", pitch: "2A" },
+                { group: "U11 Boys Group A", team1: "Knights U11 Boys - JAMES", team2: "Dandy City U11 Boys - AIDEN", time: "11:00 AM", pitch: "3A" },
+                { group: "U11 Boys Group A", team1: "Dandy City U11 Boys - ROB", team2: "Dandy City U11 Boys - AIDEN", time: "12:50 PM", pitch: "2A" },
+                { group: "U11 Boys Group A", team1: "Dinamo U11 Boys - KUNA", team2: "Dandy City U11 Boys - AIDEN", time: "1:30 PM", pitch: "2B" },
+                { group: "U11 Boys Group A", team1: "Knights U11 Boys - JAMES", team2: "Dandy City U11 Boys - ROB", time: "3:30 PM", pitch: "3A" },
+                { group: "U11 Boys Group B", team1: "Dinamo U11 Boys - MARC", team2: "Strathmore U11 Boys - MARK", time: "9:00 AM", pitch: "2A" },
+                { group: "U11 Boys Group B", team1: "Dinamo U11 Boys - MARC", team2: "Dandy City U11 Boys - RS", time: "10:20 AM", pitch: "3B" },
+                { group: "U11 Boys Group B", team1: "Strathmore U11 Boys - MARK", team2: "Nth Geelong U11 Boys", time: "11:00 AM", pitch: "2A" },
+                { group: "U11 Boys Group B", team1: "Dandy City U11 Boys - RS", team2: "Strathmore U11 Boys - MARK", time: "11:40 AM", pitch: "2B" },
+                { group: "U11 Boys Group B", team1: "Dandy City U11 Boys - RS", team2: "Nth Geelong U11 Boys", time: "12:50 PM", pitch: "2B" },
+                { group: "U11 Boys Group B", team1: "Dinamo U11 Boys - MARC", team2: "Nth Geelong U11 Boys", time: "1:30 PM", pitch: "3B" },
+                { group: "U12 Boys Group A", team1: "Knights U12 Boys - BATUR", team2: "Dinamo U12 Boys - GAL", time: "9:00 AM", pitch: "3A" },
+                { group: "U12 Boys Group A", team1: "Dinamo U12 Boys - GAL", team2: "Dandy City U12 Boys - BEN", time: "10:20 AM", pitch: "2B" },
+                { group: "U12 Boys Group A", team1: "Knights U12 Boys - BATUR", team2: "Strathmore U12 Boys - JARROD", time: "11:00 AM", pitch: "2B" },
+                { group: "U12 Boys Group A", team1: "Dandy City U12 Boys - BEN", team2: "Strathmore U12 Boys - JARROD", time: "11:40 AM", pitch: "3A" },
+                { group: "U12 Boys Group A", team1: "Knights U12 Boys - BATUR", team2: "Dandy City U12 Boys - BEN", time: "1:30 PM", pitch: "3A" },
+                { group: "U12 Boys Group A", team1: "Dinamo U12 Boys - GAL", team2: "Strathmore U12 Boys - JARROD", time: "2:10 PM", pitch: "3A" },
+                { group: "U12 Boys Group B", team1: "Strathmore U12 Boys - DANILO", team2: "Nth Geelong U12 Boys - MARKO", time: "9:40 AM", pitch: "3A" },
+                { group: "U12 Boys Group B", team1: "Dinamo U12 Boys - BALTA", team2: "Nth Geelong U12 Boys - MARKO", time: "12:50 PM", pitch: "3A" },
+                { group: "U12 Boys Group B", team1: "Dinamo U12 Boys - BALTA", team2: "Strathmore U12 Boys - DANILO", time: "2:10 PM", pitch: "2B" },
+                { group: "U8 Girls Group A", team1: "Dinamo U8 Girls - JANA", team2: "Dandy City U8 Girls", time: "9:40 AM", pitch: "1D" },
+                { group: "U8 Girls Group A", team1: "Dandy City U8 Girls", team2: "Strathmore Split U8 Girls - JOE", time: "12:50 PM", pitch: "1A" },
+                { group: "U8 Girls Group A", team1: "Dinamo U8 Girls - JANA", team2: "Strathmore Split U8 Girls - JOE", time: "2:10 PM", pitch: "1C" },
+                { group: "U9 Girls Group A", team1: "Dandy City U9 Girls", team2: "Strathmore Split U9 Girls - KOSTA", time: "9:40 AM", pitch: "3B" },
+                { group: "U9 Girls Group A", team1: "Knights U9 Girls - SOPHIE", team2: "Dinamo U9 Girls - FRANKIE", time: "10:20 AM", pitch: "1D" },
+                { group: "U9 Girls Group A", team1: "Knights U9 Girls - SOPHIE", team2: "Dandy City U9 Girls", time: "12:50 PM", pitch: "1C" },
+                { group: "U9 Girls Group A", team1: "Dinamo U9 Girls - FRANKIE", team2: "Strathmore Split U9 Girls - KOSTA", time: "1:30 PM", pitch: "1A" },
+                { group: "U9 Girls Group A", team1: "Knights U9 Girls - SOPHIE", team2: "Strathmore Split U9 Girls - KOSTA", time: "2:10 PM", pitch: "1A" },
+                { group: "U9 Girls Group A", team1: "Dinamo U9 Girls - FRANKIE", team2: "Dandy City U9 Girls", time: "2:50 PM", pitch: "1A" },
+                { group: "U11 Girls Group A", team1: "Knights U11 Girls - ELVIS", team2: "Dinamo U11 Girls - JOE", time: "11:40 AM", pitch: "3B" },
+                { group: "U11 Girls Group A", team1: "Nth Geelong U11 Girls - MARK", team2: "Dandy City U11 Girls", time: "12:50 PM", pitch: "3B" },
+                { group: "U11 Girls Group A", team1: "Nth Geelong U11 Girls - MARK", team2: "Dinamo U11 Girls - JOE", time: "2:50 PM", pitch: "2A" },
+                { group: "U11 Girls Group A", team1: "Knights U11 Girls - ELVIS", team2: "Nth Geelong U11 Girls - MARK", time: "3:30 PM", pitch: "2A" },
+                { group: "U11 Girls Group A", team1: "Dandy City U11 Girls", team2: "Dinamo U11 Girls - JOE", time: "4:10 PM", pitch: "3B" },
+                { group: "U11 Girls Group A", team1: "Knights U11 Girls - ELVIS", team2: "Dandy City U11 Girls", time: "4:10 PM", pitch: "2B" },
+                { group: "U12 Girls Group A", team1: "Strathmore U12 Girls - ANTHONY", team2: "Strathmore U12 Girls - MARIO", time: "2:10 PM", pitch: "3B" },
+                { group: "U12 Girls Group A", team1: "Dandy City U12 Girls", team2: "Strathmore U12 Girls - ANTHONY", time: "2:50 PM", pitch: "3A" },
+                { group: "U12 Girls Group A", team1: "Dinamo U12 - MITREVSKI", team2: "Strathmore U12 Girls - MARIO", time: "2:50 PM", pitch: "3B" },
+                { group: "U12 Girls Group A", team1: "Strathmore U12 Girls - MARIO", team2: "Dandy City U12 Girls", time: "3:30 PM", pitch: "2B" },
+                { group: "U12 Girls Group A", team1: "Strathmore U12 Girls - ANTHONY", team2: "Dinamo U12 - MITREVSKI", time: "3:30 PM", pitch: "3B" },
+                { group: "U12 Girls Group A", team1: "Dandy City U12 Girls", team2: "Dinamo U12 - MITREVSKI", time: "4:10 PM", pitch: "2A" }
+            ];
+
+            // Extract unique groups and teams
+            const groups = [...new Set(matches.map(m => m.group))];
+            const teamsByGroup = {};
+            matches.forEach(m => {
+                if (!teamsByGroup[m.group]) teamsByGroup[m.group] = new Set();
+                teamsByGroup[m.group].add(m.team1);
+                teamsByGroup[m.group].add(m.team2);
+            });
+
+            // MatchInput Component
+            function MatchInput({ match, index, updateScores }) {
+                return (
+                    <div className="match-input">
+                        <span>{match.team1} vs {match.team2} ({match.time}, Pitch {match.pitch})</span>
+                        <input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            onChange={(e) => updateScores(index, 'team1Goals', parseInt(e.target.value) || 0)}
+                        />
+                        <span>-</span>
+                        <input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            onChange={(e) => updateScores(index, 'team2Goals', parseInt(e.target.value) || 0)}
+                        />
+                    </div>
+                );
+            }
+
+            // StandingsTable Component
+            function StandingsTable({ group, teams, scores }) {
+                const standings = Array.from(teams).map(team => {
+                    let points = 0;
+                    let goalsScored = 0;
+                    let goalsConceded = 0;
+
+                    scores.forEach((score, idx) => {
+                        const match = matches[idx];
+                        if (match.group !== group) return;
+                        if (score.team1Goals === null || score.team2Goals === null) return;
+
+                        if (match.team1 === team) {
+                            goalsScored += score.team1Goals;
+                            goalsConceded += score.team2Goals;
+                            if (score.team1Goals > score.team2Goals) points += 3;
+                            else if (score.team1Goals === score.team2Goals) points += 1;
+                        } else if (match.team2 === team) {
+                            goalsScored += score.team2Goals;
+                            goalsConceded += score.team1Goals;
+                            if (score.team2Goals > score.team1Goals) points += 3;
+                            else if (score.team2Goals === score.team1Goals) points += 1;
+                        }
+                    });
+
+                    return {
+                        team,
+                        points,
+                        goalDifference: goalsScored - goalsConceded,
+                        goalsScored,
+                        goalsConceded
+                    };
+                }).sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference);
+
+                return (
+                    <div>
+                        <h3>{group} Standings</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Team</th>
+                                    <th>Pts</th>
+                                    <th>GD</th>
+                                    <th>GS</th>
+                                    <th>GC</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {standings.map((row, idx) => (
+                                    <tr key={idx}>
+                                        <td>{row.team}</td>
+                                        <td>{row.points}</td>
+                                        <td>{row.goalDifference}</td>
+                                        <td>{row.goalsScored}</td>
+                                        <td>{row.goalsConceded}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                );
+            }
+
+            // Main App Component
+            function App() {
+                const [scores, setScores] = useState(matches.map(() => ({ team1Goals: null, team2Goals: null })));
+                const [expandedGroups, setExpandedGroups] = useState({});
+
+                const updateScores = (index, field, value) => {
+                    const newScores = [...scores];
+                    newScores[index] = { ...newScores[index], [field]: value };
+                    setScores(newScores);
+                };
+
+                const toggleGroup = (group) => {
+                    setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }));
+                };
+
+                return (
+                    <div className="container">
+                        <h1>Youth Soccer Tournament Score Calculator</h1>
+                        <p>Enter match scores to calculate points and goal difference for September 14, 2025.</p>
+                        {groups.map(group => (
+                            <div key={group}>
+                                <button className="group-button" onClick={() => toggleGroup(group)}>
+                                    <span>{group}</span>
+                                    <span>{expandedGroups[group] ? '−' : '+'}</span>
+                                </button>
+                                {expandedGroups[group] && (
+                                    <div className="group-content">
+                                        {matches.map((match, index) => (
+                                            match.group === group && (
+                                                <MatchInput
+                                                    key={index}
+                                                    match={match}
+                                                    index={index}
+                                                    updateScores={updateScores}
+                                                />
+                                            )
+                                        ))}
+                                        <StandingsTable
+                                            group={group}
+                                            teams={teamsByGroup[group]}
+                                            scores={scores}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+
+            // Render the app
+            ReactDOM.render(<App />, document.getElementById('root'));
+        } catch (error) {
+            console.error('Failed to render React app:', error);
+            document.getElementById('error').innerText = 'Error loading the application. Please try refreshing the page or check your internet connection.';
+        }
+    </script>
+</body>
+</html>
